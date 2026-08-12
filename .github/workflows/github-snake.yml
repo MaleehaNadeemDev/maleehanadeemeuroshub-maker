@@ -1,0 +1,56 @@
+# .github/workflows/github-snake.yml
+#
+# Regenerates the contribution-graph snake every day and pushes the SVGs to the
+# "output" branch, where README.md reads them from.
+#
+# One-time setup:
+#   1. Put this file at  .github/workflows/github-snake.yml  in the repo named
+#      after your username (maleehanadeemeuroshub-maker/maleehanadeemeuroshub-maker).
+#   2. Settings -> Actions -> General -> Workflow permissions:
+#      select "Read and write permissions", then Save.
+#   3. Actions tab -> "Generate snake animation" -> Run workflow (to seed the
+#      output branch immediately instead of waiting for the nightly run).
+
+name: Generate snake animation
+
+on:
+  schedule:
+    # 02:15 UTC daily
+    - cron: "15 2 * * *"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: snake-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Generate snake SVGs
+        uses: Platane/snk/svg-only@v3
+        with:
+          github_user_name: ${{ github.repository_owner }}
+          # One file per line. Options are passed as a query string.
+          # color_dots takes exactly 5 colours: none -> lowest -> highest.
+          outputs: |
+            dist/snake-dark.svg?color_snake=#FF4FD8&color_dots=#1A0730,#3B1A5E,#6D3AA8,#B04FD8,#FF9CE6
+            dist/snake-light.svg?color_snake=#D6189C&color_dots=#FBEAF9,#F0C9F2,#D98BE0,#B04FD8,#7C3AED
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push to the output branch
+        uses: crazy-max/ghaction-github-pages@v4
+        with:
+          target_branch: output
+          build_dir: dist
+          commit_message: "chore: refresh snake animation [skip ci]"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
